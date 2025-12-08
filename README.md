@@ -22,6 +22,47 @@ The primary challange was a binary classification problem characterized by:
 
 * **Evaluation Metric:** The competition was evaluated on the **F1 Score**, which is well-suited for imbalanced classification as it balances precision and recall.
 
+# System Design
+![System Design](system_design.svg)
+
+This architecture follows a **Champion/Challenger** design pattern, prioritizing iterative experimentation. We explicitly branched our modeling strategy into two distinct paradigms Deep Sequence Modeling (the "Challenger") and Gradient Boosting on Engineered Features (the "Champion") to empirically determine the best approach for sparse astronomical time series data.
+
+### Data Ingestion & Storage Layer
+The foundation of the pipeline handles two distrinct data modalities:
+- **Static Metadata** (`RawLogs`): This stream ingests object-level scalars like Redshift (`Z`) and Galactic Dust Extinction (`EBV`). These are critical physical invariants that anchor the model.
+
+- **Time-Series Lightcurves** (`RawLC`): The core complexity lies here. We ingest photometric flux measurements across six optical filters (`u, g, r, i, z, y`). These are sparse, irregularly sampled sequences, necessitating robust preprocessing before they can enter the feature factory.
+
+### Feature Engieering Strategy (The "Pivot" Point)
+Transforming raw, noisy signals into structured, predictive representations.
+
+We architected two parallel feature extraction paths to test the "quality vs. complexity" trade-off:
+
+- **Path A: Baseline Statistical (Manual):** We started with a lightweight, manual extraction pipeline computing first-order statistics (Mean, Std, Skew) and domain-specific ratios (Flux/Flux_Error). While computationally cheap, this approach failed to capture the temporal evolution of the lightcurves.
+
+- **Path B: Automated** `tsfresh` **(The Winning Strategy):** This was the architectural breakthrough. Instead of treating the lightcurve as a single blob, we applied Per-Filter Extraction. We utilized `tsfresh` with `EfficientFCParameters` to generate hundreds of time-series characteristics for each color band independently.
+    - **Feature Selection:** To prevent the curse of dimensionality, we employed a statistical significance test (`tsfresh.select_features`), distilling the massive feature space down to the **top 198 most predictive features**. This reduced noise while retaining critical signal regarding the TDEs.
+
+### Modeling & Experimentation Loop
+This layer represents the core scientific inquiry of the project. We ran two concurrent experimental branches:
+- **Experiment A: Deep Learning (The "Failed" Hypothesis)** We hypothesized that Recurrent Neural Networks (RNNs) could learn latent temporal representations directly from the raw data. We designed two architectures:
+    1. **Single-Channel Bi-GRU + Attention:** To capture global dependencies.
+    2. **Multi-Channel Bi-GRU:** A "Mixture of Experts" style approach where each filter had a dedicated encoder.
+    - **The Outcome:** This branch hit a "Performance Ceiling" (Max F1 ~0.18). The diagnosis was clear: **Data Sparsity**. Deep learning models struggled to generalize from the irregular gaps in observations and the low volume of positive TDE samples (~150 examples).
+- **Experiment B: Gradient Boosting (The "Success" Path)** We pivoted back to tree-based ensembles, specifically **LightGBM**, which excels at handling tabular data with missing values.
+
+    - **Optimization:** We used **Optuna** for Bayesian hyperparameter optimization (50 trials) to fine-tune the decision boundaries.
+    - Imbalance Handling: We utilized `scale_pos_weight` to explicitly penalize false negatives, addressing the severe $4.86\%$ class imbalance.
+    - Result: This architecture achieved a superior F1 score of $0.5225$ on cross-validation, confirming that feature engineering > architecture engineering for this specific dataset.
+
+### Strategic Pivot & Diagnosis
+The **"Diagnosis"** node in the diagram is critical. It represents the decision to abandon the Deep Learning branch. We empirically proved that the dataset's sparsity favored the inductive bias of decision trees (which split on distinct feature thresholds) over the continuous manifold learning of RNNs. This pivoted resources entirely to optimizing the Feature Engineering + LightGBM pipeline.
+
+### Final Inference Pipeline
+1. **Inference:** The optimized LightGBM model ingests the sanitized 198-feature vector.
+2. **Threshold Optimisation:** We do not use the default 0.5 decision boundary. Instead, we statistically derived an **Optimal P-threshold (~0.35)** that maximizes the F1 score, trading off just enough Precision to capture the elusive TDE events (Recall).
+3. **Submission:** The system outputs a binary classification (`submission.csv`) ready for deployment.
+
 # 2. Approach Overview
 Our approach was an agile and interative loop of modeling, diagnosis, and strategic pivoting. 
 
