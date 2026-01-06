@@ -16,7 +16,7 @@ This repository hosts the full solution for the [MALLORN Astronomical Classifica
 # 1. Problem Statement
 The objective of this challange was to develop a machine learning model capable of identifying rare **Tidal Disruption Events (TDEs)** from simulated multi-band astronomical lightcurve data. The dataset was designed to emulate observations from the upcoming Vera C. Rubin Observatory's Legacy Survey of Space and Time (LSST).
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://thermophysical-property-melting-point.streamlit.app)
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://mallorn-astronomical-classification-challenge.streamlit.app)
 
 
 ## The Dataset
