@@ -63,7 +63,7 @@ with st.sidebar:
     ])
     
     st.divider()
-    st.info("👨‍🔬 **Coder:** Bhargav Kumar Nath\n\n🏆 **Rank:** 7th Place (Leaderboard)\n\n⚡ **Key Insight:** Feature Eng > Deep Learning for sparse data.")
+    st.info("👨‍🔬 **Coder:** Bhargav Kumar Nath\n\n **Key Insight:** Feature Eng > Deep Learning for sparse data.")
 
 # Helper Functions (Simulation)
 
