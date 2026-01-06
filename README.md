@@ -1,11 +1,23 @@
 # MALLORN Astronomical Classification Challenge
 
-## *Final Public Leaderboard Score: 0.5353 (7th Place) (Date: 7 Nov, 2025)*
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
+![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
+![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
+![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=matplotlib&logoColor=white)
+![Seaborn](https://img.shields.io/badge/Seaborn-EC407A?style=for-the-badge&logo=seaborn&logoColor=white)
+![Scikit-learn](https://img.shields.io/badge/Scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
+![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+![VS Code](https://img.shields.io/badge/VS%20Code-007ACC?style=for-the-badge&logo=visual-studio-code&logoColor=white)
 
-This repository hosts the full solution for the MALLORN Astronomical Classification Challenge. The project followed an iterative data science journey, starting with classical machine learning, exploring deep learning approaches, and finally achieving the best results by circling back to a finely tuned gradient boosting model enhanced with advanced feature engineering.
+This repository hosts the full solution for the [MALLORN Astronomical Classification Challenge](https://www.kaggle.com/competitions/mallorn-astronomical-classification-challenge/overview) . The project followed an iterative data science journey, starting with classical machine learning, exploring deep learning approaches, and finally achieving the best results by circling back to a finely tuned gradient boosting model enhanced with advanced feature engineering.
 
 # 1. Problem Statement
 The objective of this challange was to develop a machine learning model capable of identifying rare **Tidal Disruption Events (TDEs)** from simulated multi-band astronomical lightcurve data. The dataset was designed to emulate observations from the upcoming Vera C. Rubin Observatory's Legacy Survey of Space and Time (LSST).
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://thermophysical-property-melting-point.streamlit.app)
+
 
 ## The Dataset
 The data is comprised of 2 main componenets:
