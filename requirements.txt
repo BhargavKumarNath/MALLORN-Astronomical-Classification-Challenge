@@ -79,7 +79,7 @@ smmap
 SQLAlchemy
 stack-data
 statsmodels
-streamlit
+streamlit>=1.42.0
 stumpy
 sympy
 tenacity
