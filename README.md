@@ -2,168 +2,174 @@
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
-![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
+![LightGBM](https://img.shields.io/badge/LightGBM-F37626?style=for-the-badge&logo=kaggle&logoColor=white)
+![tsfresh](https://img.shields.io/badge/tsfresh-013243?style=for-the-badge&logo=python&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
-![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=matplotlib&logoColor=white)
-![Seaborn](https://img.shields.io/badge/Seaborn-EC407A?style=for-the-badge&logo=seaborn&logoColor=white)
-![Scikit-learn](https://img.shields.io/badge/Scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
-![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white)
-![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
-![VS Code](https://img.shields.io/badge/VS%20Code-007ACC?style=for-the-badge&logo=visual-studio-code&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
 
-This repository hosts the full solution for the [MALLORN Astronomical Classification Challenge](https://www.kaggle.com/competitions/mallorn-astronomical-classification-challenge/overview) . The project followed an iterative data science journey, starting with classical machine learning, exploring deep learning approaches, and finally achieving the best results by circling back to a finely tuned gradient boosting model enhanced with advanced feature engineering.
+This repository contains an end-to-end machine learning pipeline identifying rare **Tidal Disruption Events (TDEs)** from multi-band astronomical lightcurve data. Designed specifically around simulated observations from the Vera C. Rubin Observatory's Legacy Survey of Space and Time (LSST), the system tackles extreme class imbalance and data sparsity.
 
-# 1. Problem Statement
-The objective of this challange was to develop a machine learning model capable of identifying rare **Tidal Disruption Events (TDEs)** from simulated multi-band astronomical lightcurve data. The dataset was designed to emulate observations from the upcoming Vera C. Rubin Observatory's Legacy Survey of Space and Time (LSST).
+By empirically evaluating Deep Sequence Modeling alongside Automated Feature Engineering, this project demonstrates how inductive bias and data representation often supersede raw architectural complexity when working with irregular time-series data.
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://mallorn-astronomical-classification-challenge.streamlit.app)
 
+---
 
-## The Dataset
-The data is comprised of 2 main componenets:
-* **Metadata Files (`train_log.csv`, `test_log.csv`):** These files contain object IDs and static features for each astronomical object, such as redshift (`Z`) and galactic dust extinction (`EBV`).
+## Problem Statement
 
-* **Lightcurve Files:** Located in 20 sub-folders, these files contain the core time-series data: brightness (Flux) measurements taken at specific times (`Time (MJD)`) through six different optical filters (`u`, `g`, `r`, `i`, `z`, `y`).
+The goal is to accurately classify **Tidal Disruption Events**: Violent occurrences where stars are torn apart by supermassive black holes using six parallel optical lightcurves (`u`, `g`, `r`, `i`, `z`, `y`) along with static physical metadata (e.g., redshift, galactic dust extinction).
 
-## The Challange
-The primary challange was a binary classification problem characterized by:
+**Core Challenges:**
+1. **Severe Class Imbalance:** TDEs represent merely ~**4.86%** of the underlying dataset (approx. 150 training samples).
+2. **Extreme Sparsity:** Astronomical observations occur at irregular intervals (MJD) across channels, leading to missing data points and vast temporal gaps. 
+3. **Metric Optimization:** Maximizing the macro **F1 Score** explicitly requires trading off Precision against Recall, penalizing false negatives.
 
-* **Severe Class Imbalance:** TDEs are extremely rare, representing only **4.86%** of the training set.
+---
 
-* **Sparse and Irregular Time-Series:** The lightcurves for each object have a variable number of observations sampled at irregular time intervals.
+## Advanced ML Techniques & Engineering Decisions
 
-* **Evaluation Metric:** The competition was evaluated on the **F1 Score**, which is well-suited for imbalanced classification as it balances precision and recall.
+To tackle the complexities of irregular astronomical data and extreme class imbalance, several advanced data science methodologies were employed:
 
-# System Design
-![System Design](system_design.svg)
+- **Automated Temporal Feature Abstraction:** Transitioned from manual statistical aggregation to leveraging `tsfresh` (`EfficientFCParameters`). This autonomously extracted thousands of complex time-series characteristics (e.g., continuous wavelet transforms, Fourier coefficients, energy ratios) independently across all 6 optical filter bands.
+- **Rigorous Dimensionality Reduction:** To combat the curse of dimensionality, statistical hypothesis testing (`tsfresh.select_features`) was utilized to distill the massive feature space down to the **top 198 most predictive and statistically significant vectors**.
+- **Champion / Challenger Architecture Pattern:** Deep empirical experimentation explicitly splitting into a Deep Learning branch (PyTorch Bi-Directional GRUs with custom Attention mechanisms) and a Feature Engineering branch (Gradient Boosting) to evaluate representation learning vs. inductive bias.
+- **Cost-Sensitive Learning & Asymmetric Penalization:** Tackling the severe 1:20 minority class skew by explicitly penalizing false negatives via `scale_pos_weight` during LightGBM tree construction.
+- **Probability Threshold Optimization:** Moving beyond the naive $P = 0.5$ classification boundary. We optimized the decision threshold across Out-Of-Fold (OOF) predictions during 5-Fold Stratified Cross-Validation, mathematically identifying an optimal threshold ($P > 0.35$) that maximizes the macro F1 surface.
+- **Bayesian Hyperparameter Search:** Navigated the complex parameter topology of LightGBM using `Optuna`'s Tree-structured Parzen Estimator (TPE) algorithm over a 50-trial study to locate the global minima of the loss function.
+- **Interactive Inference Lab:** Deployed a `Streamlit` application for rapid exploratory data analysis (EDA), lightcurve visualization, and interactive threshold simulation.
 
-This architecture follows a **Champion/Challenger** design pattern, prioritizing iterative experimentation. We explicitly branched our modeling strategy into two distinct paradigms Deep Sequence Modeling (the "Challenger") and Gradient Boosting on Engineered Features (the "Champion") to empirically determine the best approach for sparse astronomical time series data.
+---
 
-### Data Ingestion & Storage Layer
-The foundation of the pipeline handles two distrinct data modalities:
-- **Static Metadata** (`RawLogs`): This stream ingests object-level scalars like Redshift (`Z`) and Galactic Dust Extinction (`EBV`). These are critical physical invariants that anchor the model.
+## System Architecture
 
-- **Time-Series Lightcurves** (`RawLC`): The core complexity lies here. We ingest photometric flux measurements across six optical filters (`u, g, r, i, z, y`). These are sparse, irregularly sampled sequences, necessitating robust preprocessing before they can enter the feature factory.
+The core of the system represents a fork in methodology. While the ingestion layer uniformly unifies raw logs and irregular multi-channel flux, the experimentation forces a pivot away from RNNs and exclusively towards LightGBM and `tsfresh`.
 
-### Feature Engieering Strategy (The "Pivot" Point)
-Transforming raw, noisy signals into structured, predictive representations.
+![alt text](system_design.svg)
 
-We architected two parallel feature extraction paths to test the "quality vs. complexity" trade-off:
+*The **Diagnosis Pivot**: Our custom Bi-GRU networks critically failed to infer signal from the data gaps. LightGBM empirically validated that manual and automated temporal aggregations sidestep the sparsity constraints.*
 
-- **Path A: Baseline Statistical (Manual):** We started with a lightweight, manual extraction pipeline computing first-order statistics (Mean, Std, Skew) and domain-specific ratios (Flux/Flux_Error). While computationally cheap, this approach failed to capture the temporal evolution of the lightcurves.
+---
 
-- **Path B: Automated** `tsfresh` **(The Winning Strategy):** This was the architectural breakthrough. Instead of treating the lightcurve as a single blob, we applied Per-Filter Extraction. We utilized `tsfresh` with `EfficientFCParameters` to generate hundreds of time-series characteristics for each color band independently.
-    - **Feature Selection:** To prevent the curse of dimensionality, we employed a statistical significance test (`tsfresh.select_features`), distilling the massive feature space down to the **top 198 most predictive features**. This reduced noise while retaining critical signal regarding the TDEs.
+## Project Structure
 
-### Modeling & Experimentation Loop
-This layer represents the core scientific inquiry of the project. We ran two concurrent experimental branches:
-- **Experiment A: Deep Learning (The "Failed" Hypothesis)** We hypothesized that Recurrent Neural Networks (RNNs) could learn latent temporal representations directly from the raw data. We designed two architectures:
-    1. **Single-Channel Bi-GRU + Attention:** To capture global dependencies.
-    2. **Multi-Channel Bi-GRU:** A "Mixture of Experts" style approach where each filter had a dedicated encoder.
-    - **The Outcome:** This branch hit a "Performance Ceiling" (Max F1 ~0.18). The diagnosis was clear: **Data Sparsity**. Deep learning models struggled to generalize from the irregular gaps in observations and the low volume of positive TDE samples (~150 examples).
-- **Experiment B: Gradient Boosting (The "Success" Path)** We pivoted back to tree-based ensembles, specifically **LightGBM**, which excels at handling tabular data with missing values.
+```text
+.
+├── dashboard/               # Streamlit application codebase
+│   └── app.py               # Front-end visualization and inference lab
+├── data/                    # Local storage for CSV metadata and folder-partitioned time-series
+│   ├── train_log.csv
+│   ├── test_log.csv
+│   └── split_*/             # Raw Lightcurve files partitioned in chunks
+├── notebooks/               # R&D Jupyter Notebooks
+│   ├── 01_initial_exploration.ipynb   # Exploratory Data Analysis
+│   ├── 02_feature_engineering.ipynb   # Tsfresh per-filter extraction logic
+│   ├── RNN.ipynb                      # Baseline sequence models and Deep Learning
+│   ├── multi_channel_model.ipynb      # Mixture-of-experts parallel Bi-GRU
+│   ├── model_1.ipynb                  # Baseline modeling (Basic Stats)
+│   ├── model_2.ipynb                  # Tsfresh integration
+│   ├── model_3.ipynb                  # Final Optuna optimization 
+│   └── submission.ipynb               # Submitting final predictions 
+├── requirements.txt         # Project dependencies
+└── README.md                # Documentation 
+```
 
-    - **Optimization:** We used **Optuna** for Bayesian hyperparameter optimization (50 trials) to fine-tune the decision boundaries.
-    - Imbalance Handling: We utilized `scale_pos_weight` to explicitly penalize false negatives, addressing the severe $4.86\%$ class imbalance.
-    - Result: This architecture achieved a superior F1 score of $0.5225$ on cross-validation, confirming that feature engineering > architecture engineering for this specific dataset.
+---
 
-### Strategic Pivot & Diagnosis
-The **"Diagnosis"** node in the diagram is critical. It represents the decision to abandon the Deep Learning branch. We empirically proved that the dataset's sparsity favored the inductive bias of decision trees (which split on distinct feature thresholds) over the continuous manifold learning of RNNs. This pivoted resources entirely to optimizing the Feature Engineering + LightGBM pipeline.
+## Data Pipeline & Model Design
 
-### Final Inference Pipeline
-1. **Inference:** The optimized LightGBM model ingests the sanitized 198-feature vector.
-2. **Threshold Optimisation:** We do not use the default 0.5 decision boundary. Instead, we statistically derived an **Optimal P-threshold (~0.35)** that maximizes the F1 score, trading off just enough Precision to capture the elusive TDE events (Recall).
-3. **Submission:** The system outputs a binary classification (`submission.csv`) ready for deployment.
+### 1. The Challenger: Deep Sequence Modeling (Bi-GRU)
+Our initial hypothesis suggested that given enough capacity, Recurrent Neural Networks could map irregular lightcurves directly onto a latent space. We built:
+* **Single-Channel Bi-GRU + Attention:** Concatenating observations and utilizing attention to weigh temporal importance.
+* **Multi-Channel Bi-GRU Architectures:** Six parallel encoders, assigning a distinct GRU "expert" per-optical filter, passing concatenated hidden states to a final dense classifier.
 
-# 2. Approach Overview
-Our approach was an agile and interative loop of modeling, diagnosis, and strategic pivoting. 
+*Outcome:* **Misfire.** Standard RNN representations deteriorated due to the sparsity variance across observation intervals and extreme dataset skew. The sequence models achieved a maximum CV F1 Score of merely ~0.18.
 
-1. **Baseline Modeling:** We began with a classical machine learning approach, using a LightGBM model on a set of simple, manually engineered statistical features.
+### 2. The Champion: Automated Feature Abstraction (LightGBM + `tsfresh`)
+By abandoning the constraint of learning time-steps iteratively, we transitioned to statistically abstracting the temporal distributions using `tsfresh`:
+* **Per-Filter Isolation:** Extracted time-series characteristics (Fourier coefficients, kurtosis, continuous wavelets, standard deviations) for each filter autonomously.
+* **Dimensionality Reduction:** Curtailed the expanding tensor via `tsfresh.select_features`, utilizing significance testing to keep exactly **198 highly actionable features**.
+* **Gradient Boosting:** Processed sparse tabular abstractions via `LightGBM`. Missing observational abstractions were natively handled by the tree-splits.
+* **Hyperparameter Tuning:** A 50-trial `Optuna` Bayesian study extracted the decision boundaries optimally tailored to the asymmetric class distribution.
 
-2. **Advanced Feature Engineering:** To improve performance, we used the `tsfresh` library to automatically extract hundreds of time-series features. A key strategic decision was to generate these features on a **per-filter basis**, which proved to be highly effective.
+*Outcome:* **Success.** The pipeline achieved a rigorous Mean CV F1 Score of **0.5225**.
 
-3. **Hyperparameter Tuning:** We used the `Optuna` framework to perform a search for the optimal LightGBM hyperparameters, which gave our best model.
+---
 
-4. **Deep Learning Exploration:** To determine if end-to-end sequence modeling could outperform feature engineering, we developed two deep learning models in PyTorch:
+## Results & Threshold Optimization
 
-    * A single-channel GRU with a Bahdanau-style attention mechanism.
-    * A more complex multi-channel GRU with six parallel encoders, one for each filter.
+Model performance using stratified 5-fold cross-validation:
 
-5. **Final Diagnosis & Submission:** After rigorously testing the deep learning models and finding them to be significantly inferior, we concluded that the dataset's sparse and low-volume nature was better suited to a feature-engineering approach. We generated our final submission using the best-performing LightGBM pipeline.
+| Model Architecture | Feature Representation | Mean CV F1 Score | Inference Insight |
+| :--- | :--- | :--- | :--- |
+| **LightGBM** | Baseline Statistical Aggregations | 0.4281 | LightGBM handles tabular sparsity well natively. |
+| **LightGBM** | Filter Interpolations + Features | 0.4974 | Imputing sparse data injected model noise. |
+| **Bi-GRU (Attention)** | Raw Multi-channel Lightcurves | 0.1800 | Deep architectures failed on the data sparsity constraint. |
+| **LightGBM** | **`tsfresh` Selected 198 Vectors** | **0.5225** | **Best Performance.** Automated abstraction captures local maxima accurately. |
 
-# 3. Machine Learning Techniques
-## Models & Features Sets
+**Thresholding Strategy:**
+Due to extreme skew ($1$ positive TDE instance for every $20$ negative profiles), standard soft-max thresholds evaluate poorly. Through threshold sweep testing, the decision boundary was calibrated to **$P > 0.35$**, optimizing our metric objective function and successfully capturing transient events at the expense of marginal false positives.
 
-| Model    | Feature Set                     | Mean CV F1 Score | Key Insight                                             |
-|----------|---------------------------------|-----------------|--------------------------------------------------------|
-| LightGBM | Basic Statistical Aggregates     | 0.4281          | Threshold optimization is critical.                   |
-| **LightGBM** | **Per-Filter `tsfresh` Features**      | **0.5225**          | **Best model.** Capturing per-filter dynamics is key.     |
-| LightGBM | `tsfresh` + Interpolated Colors    | 0.4974          | Interpolating sparse data creates noise and degrades performance. |
-| LightGBM | `tsfresh` + Robust Color Features  | 0.5205          | `tsfresh` had likely already captured the color signal. |
+---
 
-# Final Model: LightGBM with Autoated Feature Engineering
-Our most successful model was a LightGBM classifier. Its performance was driven by a robust feature set and methodical tuning.
+## Key Technologies
 
-* **Feature Engineering:** We used the `tsfresh` library with `EfficientFCParameters` to generate features for each of the 6 optical filters independently. This created a rich tabular dataset that captured the unique temporal behavior within each color band. The `tsfresh.select_features` function was then used to select the **198 most statistically relevant features** based on the training data.
+- **Python (3.9+)** - Ecosystem base.
+- **PyTorch** - Employed for the deep recurrent neural networks and attention mechanics.
+- **LightGBM** - Scalable Gradient Boosted decision tree framework logic.
+- **tsfresh** - Used exclusively for the automated extraction of temporal statistics.
+- **Optuna** - Bayesian inference applied to hyperparameter sweeps.
+- **Streamlit & Plotly** - Interactive frontend dashboards and lightcurve plotting.
 
-* **Hyperparameter Tuning:** A 50-trial study was conducted using **Optuna** to find the optimal hyperparameters for our LightGBM model. The best parameters were:
+---
 
-    `{'learning_rate': 0.0361, 'num_leaves': 120, 'max_depth': 11, ...}`
+## Installation and Setup
 
-* **Feature Importance:** The model identified redshift (`Z`) and features related to signal-to-noise (`Flux_Ratio_skew`) and minimum brightness levels (`g_Flux_min`, etc.) as the most predictive, confirming that both static metadata and lightcurve shape are crucial for classification.
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/BhargavKumarNath/MALLORN-Astronomical-Classification-Challenge.git
+   cd MALLORN-Astronomical-Classification-Challenge
+   ```
 
-# 4. Deep Learning Approach
-In an attempt to further improve our score, we pivoted to deep learning to see if a model could learn temporal patterns directly from the raw sequences.
+2. **Establish Environment:**
+   *(It is highly recommended to isolate dependencies via python virtual environments.)*
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # macOS / Linux
+   # OR
+   # .venv\Scripts\activate  # Windows
+   ```
 
-## Architectures
-1. **Single-Channel GRU with Attention:** This model processed a flattened sequence of all observations. It used a bidirectional GRU to learn temporal patterns and an attention mechanism to focus on the most relevant timesteps before classification.
+3. **Install Dependencies:**
+   ```bash
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
 
-2. **Multi-Channel GRU:** A more sophisticated model with six parallel bidirectional GRU encoders. Each encoder was an "expert" for a single filter (`u`, `g`, `r`, etc.). The final hidden states from all six encoders were concatenated with the static metadata and passed to a final classifier.
+---
 
-## Diagnosis of Performance
-Despite proper data pre-processing (per-object scaling, relative time encoding) and a robust architecture, the deep learning models performed poorly, achieving a maximum F1 score of ~0.18.
+## Usage Instructions
 
-**The reasons for this were twofold:**
-* **Data Sparsity:** Standard RNNs like GRUs are designed for dense, regularly sampled sequences. They struggle to find patterns in sparse, irregularly sampled astronomical data.
+### Streamlit Application (Inference Lab)
+We built an interactive UI demonstrating data drift visualization, deep modeling diagnoses, and the final pipeline logic. Launch it via:
 
-* **Low Data Volume:** With only ~150 positive TDE examples in the training set, the deep learning models did not have sufficient data to learn the complex, non-linear patterns of a TDE lightcurve from scratch.
+```bash
+python -m streamlit run dashboard/app.py
+```
 
-This experimental phase was a crucial diagnostic step, proving that for this particular problem, feature abstraction was a more effective strategy than sequence modeling.
+### Reproducing the Pipeline
+Notebook execution occurs sequentially:
+1. Initialize EDA and data extraction utilizing `01_initial_exploration.ipynb` and `02_feature_engineering.ipynb`.
+2. Inspect the failed deep learning architectures utilizing `RNN.ipynb` and `multi_channel_model.ipynb`.
+3. To replicate the champion pipeline, step through `model_2.ipynb` to establish the `tsfresh` extractions, followed by `model_3.ipynb` to initiate `Optuna` training matrices. `submission.ipynb` manages batch inference thresholding.
 
-# 5. Final Solution Pipeline
-The final submission was generated using our best LightGBM pipeline, which can be summarized as follows:
+---
 
-1. **Load Data:** Load all `train_log.csv`, `test_log.csv`, and their corresponding lightcurve files.
+## Limitations and Future Improvements
 
-2. **Feature Engineering:** Generate per-filter time-series features for the combined dataset using `tsfresh`.
+* **Color Imputation:** We manually attempted to impute synthetic missing color indices across filters; this performed negatively as the variance generated outstripped the physical signal. A bespoke Variational Autoencoder (VAE) dedicated to sequential imputation prior to gradient boosting extraction could mitigate this.
+* **Deep Architectural Retools:** A transition from RNN networks to Transformers, effectively removing sequential dependency through robust positional and timestamp encodings, represents a structurally sound path forward to revisit sequence-to-sequence mappings.
 
-3. **Feature Selection:** Isolate the training data features and use `tsfresh.select_features` to identify the most relevant feature columns.
+---
 
-4. **Data Preparation:**
-    * Split the data back into training and test sets using the selected feature columns.
-
-    * Merge static metadata (`Z`, `EBV`).
-
-    * Sanitize feature names to be 
-    compatible with LightGBM.
-    * Scale all features using `StandardScaler` fitted only on the training data.
-
-5. **Threshold Optimization:** Perform 5-Fold Stratified Cross-Validation on the training data to determine the mean optimal probability threshold (~0.35) for maximizing the F1 score.
-
-6. **Final Training & Prediction:**
-    * Train the Optuna-tuned LightGBM model **on 100% of the training data.**
-
-    * Predict probabilities on the prepared test set.
-
-    * Apply the optimal threshold to the probabilities to generate the final binary predictions.
-
-7. **Submission:** Format the predictions into the required `submission.csv` file.
-
-# 6. Technical Details
-* **Libraries:** `Pandas`, `NumPy`, `Scikit-learn`, `LightGBM`, `tsfresh`, `Optuna`, `PyTorch`, `Matplotlib`, `Seaborn`.
-
-* **Validation Strategy:** 5-Fold Stratified Cross-Validation was used throughout the project to ensure robust evaluation despite the heavy class imbalance.
-
-* **Class Imbalance Handling:** The `scale_pos_weight` parameter in LightGBM was used to give more importance to the minority class (TDEs) during training.
-
-* **Code Structure:** The project is organized into modular Python scripts for each stage: initial exploration, feature engineering, modeling, and submission generation.
+## License
+MIT License. Please view the [LICENSE](LICENSE) file for the full documentation clause.
